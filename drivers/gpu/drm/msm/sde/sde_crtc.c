@@ -3116,7 +3116,7 @@ void sde_crtc_complete_commit(struct drm_crtc *crtc,
 		blank = cstate->fingerprint_pressed;
 		notifier_data.data = &blank;
 		notifier_data.id = MSM_DRM_PRIMARY_DISPLAY;
-		pr_err("fingerprint status: %s", blank ? "pressed" : "up");
+		pr_debug("fingerprint status: %s", blank ? "pressed" : "up");
 		SDE_ATRACE_BEGIN("press_event_notify");
 		msm_drm_notifier_call_chain(MSM_DRM_ONSCREENFINGERPRINT_EVENT,
 				&notifier_data);
@@ -3473,7 +3473,7 @@ ssize_t oneplus_display_notify_aod_hid(struct device *dev,
 		return count;
 	}
 
-	pr_err("notify aod hid %d\n", onscreenaod_hid);
+	pr_debug("notify aod hid %d\n", onscreenaod_hid);
 	oneplus_onscreenaod_hid = onscreenaod_hid;
 	SDE_ATRACE_END("aod_hid_node");
 	return count;
@@ -3518,7 +3518,7 @@ ssize_t oneplus_display_notify_fp_press(struct device *dev,
 		return count;
 	}
 
-	pr_err("notify fingerpress %d\n", onscreenfp_status);
+	pr_debug("notify fingerpress %d\n", onscreenfp_status);
 	oneplus_onscreenfp_status = onscreenfp_status;
 
 	drm_modeset_lock_all(drm_dev);
@@ -3583,7 +3583,7 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 		dim_status = 0;
 
 	if (dsi_display->panel->aod_status == 0 && (dim_status == 2)) {
-		pr_err("fp set it in normal status\n");
+		pr_debug("fp set it in normal status\n");
 		if (dim_status == oneplus_dim_status)
 			return count;
 		oneplus_dim_status = dim_status;
@@ -3607,7 +3607,7 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 	oneplus_dimlayer_hbm_enable = oneplus_dim_status != 0;
 	backup_dimlayer_hbm = oneplus_dimlayer_hbm_enable;
 	backup_dim_status = oneplus_dim_status;
-	pr_err("notify dim %d,aod = %d press= %d aod_hide =%d oneplus_dimlayer_hbm_enable = %d\n",
+	pr_debug("notify dim %d,aod = %d press= %d aod_hide =%d oneplus_dimlayer_hbm_enable = %d\n",
 	       oneplus_dim_status, dsi_display->panel->aod_status, oneplus_onscreenfp_status, aod_layer_hide, oneplus_dimlayer_hbm_enable);
 	if (oneplus_dim_status == 1 && HBM_flag) {
 		rc = dsi_panel_tx_cmd_set(dsi_display->panel, DSI_CMD_SET_HBM_ON_5);
@@ -3615,7 +3615,7 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 			pr_err("failed to send DSI_CMD_SET_HBM_ON_5 cmds, rc=%d\n", rc);
 			return rc;
 		}
-		pr_err("Notify dim not commit,send DSI_CMD_SET_HBM_ON_5 cmds\n");
+		pr_debug("Notify dim not commit,send DSI_CMD_SET_HBM_ON_5 cmds\n");
 		return count;
 	}
 	drm_modeset_lock_all(drm_dev);
@@ -5831,7 +5831,7 @@ static int sde_crtc_onscreenfinger_atomic_check(struct sde_crtc_state *cstate,
 		dim_mode = 0;
 		oneplus_dim_status = 0;
 		oneplus_dimlayer_hbm_enable = false;
-		pr_err("current dim = %d, oneplus_dimlayer_hbm_enable = %d\n", oneplus_dim_status, oneplus_dimlayer_hbm_enable);
+		pr_debug("current dim = %d, oneplus_dimlayer_hbm_enable = %d\n", oneplus_dim_status, oneplus_dimlayer_hbm_enable);
 	}
 
 	for (i = 0; i < cnt; i++) {
