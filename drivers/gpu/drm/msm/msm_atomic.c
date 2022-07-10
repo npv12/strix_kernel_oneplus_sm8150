@@ -614,9 +614,9 @@ static void complete_commit(struct msm_commit *c)
 
 	kms->funcs->complete_commit(kms, state);
 
-	drm_atomic_state_put(state);
-
 	priv->commit_end_time = ktime_get(); //commit end time
+
+	drm_atomic_state_put(state);
 
 	commit_destroy(c);
 }
