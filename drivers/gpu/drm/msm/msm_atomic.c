@@ -614,9 +614,9 @@ static void complete_commit(struct msm_commit *c)
 
 	kms->funcs->complete_commit(kms, state);
 
-	drm_atomic_state_put(state);
-
 	priv->commit_end_time = ktime_get(); //commit end time
+
+	drm_atomic_state_put(state);
 
 	commit_destroy(c);
 }
@@ -624,6 +624,10 @@ static void complete_commit(struct msm_commit *c)
 static void _msm_drm_commit_work_cb(struct kthread_work *work)
 {
 	struct msm_commit *commit =  NULL;
+	struct pm_qos_request req = {
+		.type = PM_QOS_REQ_AFFINE_CORES,
+		.cpus_affine = ATOMIC_INIT(BIT(raw_smp_processor_id()))
+	};
 
 	if (!work) {
 		DRM_ERROR("%s: Invalid commit work data!\n", __func__);
@@ -639,6 +643,7 @@ static void _msm_drm_commit_work_cb(struct kthread_work *work)
 	 */
 	pm_qos_add_request(&req, PM_QOS_CPU_DMA_LATENCY, 100);
 	complete_commit(commit);
+	pm_qos_remove_request(&req);
 }
 
 static struct msm_commit *commit_init(struct drm_atomic_state *state,
