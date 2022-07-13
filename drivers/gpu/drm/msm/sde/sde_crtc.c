@@ -41,7 +41,6 @@
 #include "sde_vbif.h"
 #include "sde_power_handle.h"
 #include "sde_core_perf.h"
-#include "sde_trace.h"
 #include <linux/msm_drm_notify.h>
 #include <linux/notifier.h>
 
@@ -2039,7 +2038,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	struct drm_plane_state *state;
 	struct sde_crtc_state *cstate;
 	struct sde_plane_state *pstate = NULL;
-	struct plane_state *pstates = NULL;
+	struct plane_state pstates[SDE_PSTATES_MAX];
 	struct sde_format *format;
 	struct sde_hw_ctl *ctl;
 	struct sde_hw_mixer *lm;
@@ -2050,6 +2049,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	int zpos_cnt[SDE_STAGE_MAX + 1] = { 0 };
 	int i, rot_id = 0, cnt = 0;
 	bool bg_alpha_enable = false;
+	bool is_video_mode;
 
 	if (!sde_crtc || !crtc->state || !mixer) {
 		SDE_ERROR("invalid sde_crtc or mixer\n");
@@ -2061,15 +2061,13 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	stage_cfg = &sde_crtc->stage_cfg;
 	cstate = to_sde_crtc_state(crtc->state);
 
-	cstate->sbuf_prefill_line = _sde_crtc_calc_inline_prefill(crtc);
+	is_video_mode = sde_encoder_check_curr_mode(sde_crtc->mixers[0].encoder,
+					       MSM_DISPLAY_CAP_VID_MODE);
+	if (is_video_mode)
+		cstate->sbuf_prefill_line = _sde_crtc_calc_inline_prefill(crtc);
 	sde_crtc->sbuf_rot_id_old = sde_crtc->sbuf_rot_id;
 	sde_crtc->sbuf_rot_id = 0x0;
 	sde_crtc->sbuf_rot_id_delta = 0x0;
-
-	pstates = kcalloc(SDE_PSTATES_MAX,
-			sizeof(struct plane_state), GFP_KERNEL);
-	if (!pstates)
-		return;
 
 	drm_atomic_crtc_for_each_plane(plane, crtc) {
 		state = plane->state;
@@ -2085,9 +2083,11 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 		fb = state->fb;
 
 		/* assume all rotated planes report the same prefill amount */
-		prefill = sde_plane_rot_get_prefill(plane);
-		if (prefill)
-			cstate->sbuf_prefill_line = prefill;
+		if (is_video_mode) {
+			prefill = sde_plane_rot_get_prefill(plane);
+			if (prefill)
+				cstate->sbuf_prefill_line = prefill;
+		}
 
 		sde_plane_ctl_flush(plane, ctl, true);
 		rot_id = sde_plane_get_sbuf_id(plane);
@@ -2110,7 +2110,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 		format = to_sde_format(msm_framebuffer_format(pstate->base.fb));
 		if (!format) {
 			SDE_ERROR("invalid format\n");
-			goto end;
+			return;
 		}
 
 		if (pstate->stage == SDE_STAGE_BASE && format->alpha_enable)
@@ -2176,9 +2176,6 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	}
 
 	_sde_crtc_program_lm_output_roi(crtc);
-
-end:
-	kfree(pstates);
 }
 
 static void _sde_crtc_swap_mixers_for_right_partial_update(
@@ -2877,7 +2874,6 @@ void sde_crtc_prepare_commit(struct drm_crtc *crtc,
 	cstate = to_sde_crtc_state(crtc->state);
 	SDE_EVT32_VERBOSE(DRMID(crtc));
 
-	SDE_ATRACE_BEGIN("sde_crtc_prepare_commit");
 
 	/* identify connectors attached to this crtc */
 	cstate->num_connectors = 0;
@@ -2900,7 +2896,6 @@ void sde_crtc_prepare_commit(struct drm_crtc *crtc,
 
 	/* prepare main output fence */
 	sde_fence_prepare(sde_crtc->output_fence);
-	SDE_ATRACE_END("sde_crtc_prepare_commit");
 }
 
 /**
@@ -2995,9 +2990,7 @@ static void _sde_crtc_retire_event(struct drm_connector *connector,
 		return;
 	}
 
-	SDE_ATRACE_BEGIN("signal_retire_fence");
 	sde_connector_complete_commit(connector, ts, fence_event);
-	SDE_ATRACE_END("signal_retire_fence");
 }
 
 static void sde_crtc_frame_event_work(struct kthread_work *work)
@@ -3030,7 +3023,6 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 		return;
 	}
 	priv = sde_kms->dev->dev_private;
-	SDE_ATRACE_BEGIN("crtc_frame_event");
 
 	SDE_DEBUG("crtc%d event:%u ts:%lld\n", crtc->base.id, fevent->event,
 			ktime_to_ns(fevent->ts));
@@ -3065,11 +3057,9 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 	}
 
 	if (fevent->event & SDE_ENCODER_FRAME_EVENT_SIGNAL_RELEASE_FENCE) {
-		SDE_ATRACE_BEGIN("signal_release_fence");
 		sde_fence_signal(sde_crtc->output_fence, fevent->ts,
 				(fevent->event & SDE_ENCODER_FRAME_EVENT_ERROR)
 				? SDE_FENCE_SIGNAL_ERROR : SDE_FENCE_SIGNAL);
-		SDE_ATRACE_END("signal_release_fence");
 	}
 
 	if (fevent->event & SDE_ENCODER_FRAME_EVENT_SIGNAL_RETIRE_FENCE)
@@ -3085,7 +3075,6 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 	spin_lock_irqsave(&sde_crtc->spin_lock, flags);
 	list_add_tail(&fevent->list, &sde_crtc->frame_event_list);
 	spin_unlock_irqrestore(&sde_crtc->spin_lock, flags);
-	SDE_ATRACE_END("crtc_frame_event");
 }
 
 void sde_crtc_complete_commit(struct drm_crtc *crtc,
@@ -3118,11 +3107,9 @@ void sde_crtc_complete_commit(struct drm_crtc *crtc,
 		blank = cstate->fingerprint_pressed;
 		notifier_data.data = &blank;
 		notifier_data.id = MSM_DRM_PRIMARY_DISPLAY;
-		pr_err("fingerprint status: %s", blank ? "pressed" : "up");
-		SDE_ATRACE_BEGIN("press_event_notify");
+		pr_debug("fingerprint status: %s", blank ? "pressed" : "up");
 		msm_drm_notifier_call_chain(MSM_DRM_ONSCREENFINGERPRINT_EVENT,
 				&notifier_data);
-		SDE_ATRACE_END("press_event_notify");
 	}
 }
 
@@ -3271,6 +3258,8 @@ bool sde_crtc_get_fingerprint_pressed(struct drm_crtc_state *crtc_state)
 
 extern int oneplus_force_screenfp;
 extern int oneplus_panel_alpha;
+static int alpha_generated = 0, alpha_generated_dc = 0;
+
 struct ba {
 	u32 brightness;
 	u32 alpha;
@@ -3346,7 +3335,7 @@ struct ba brightness_alpha_lut_dc[] = {
 	{260, 0x00}
 };
 
-struct ba brightness_alpha_lut[21] = {};
+static u32 *alpha_gen, *alpha_gen_dc;
 
 static int interpolate(int x, int xa, int xb, int ya, int yb)
 {
@@ -3362,49 +3351,85 @@ static int interpolate(int x, int xa, int xb, int ya, int yb)
 	return ya + factor + plus + sub;
 }
 
-int brightness_to_alpha(int brightness)
+u32 alpha_generator(struct ba *pre_gen_array, u32 array_size, u32 brightness)
 {
-	int level = ARRAY_SIZE(brightness_alpha_lut);
-	int i = 0;
+	int i;
 
-	for (i = 0; i < ARRAY_SIZE(brightness_alpha_lut); i++) {
-		if (brightness_alpha_lut[i].brightness >= brightness)
+	for (i = 0; i < array_size; i++) {
+		if (pre_gen_array[i].brightness >= brightness)
 			break;
 	}
 
 	if (i == 0)
-		return brightness_alpha_lut[0].alpha;
-	else if (i == level)
-		return brightness_alpha_lut[level - 1].alpha;
+		return pre_gen_array[0].alpha;
 
-	return interpolate(brightness, brightness_alpha_lut[i - 1].brightness,
-			   brightness_alpha_lut[i].brightness,
-			   brightness_alpha_lut[i - 1].alpha,
-			   brightness_alpha_lut[i].alpha);
+	if (i == array_size)
+		return pre_gen_array[array_size - 1].alpha;
+
+	return interpolate(brightness,
+			pre_gen_array[i - 1].brightness,
+			pre_gen_array[i].brightness,
+			pre_gen_array[i - 1].alpha,
+			pre_gen_array[i].alpha);
 }
 
-int bl_to_alpha_dc(int brightness)
+void gen_alpha(struct ba *pre_gen_array)
 {
-	int level = ARRAY_SIZE(brightness_alpha_lut_dc);
-	int i = 0;
-	int alpha;
+	int i;
 
-	for (i = 0; i < ARRAY_SIZE(brightness_alpha_lut_dc); i++) {
-		if (brightness_alpha_lut_dc[i].brightness >= brightness)
-			break;
+	if (alpha_generated)
+		return;
+
+	alpha_gen = kmalloc_array(2001, sizeof(u32), GFP_KERNEL);
+
+	for (i = 0; i < 2001; i++) {
+		alpha_gen[i] = alpha_generator(pre_gen_array, 21, i);
 	}
 
-	if (i == 0)
-		alpha = brightness_alpha_lut_dc[0].alpha;
-	else if (i == level)
-		alpha = brightness_alpha_lut_dc[level - 1].alpha;
-	else
-		alpha = interpolate(brightness,
-				    brightness_alpha_lut_dc[i - 1].brightness,
-				    brightness_alpha_lut_dc[i].brightness,
-				    brightness_alpha_lut_dc[i - 1].alpha,
-				    brightness_alpha_lut_dc[i].alpha);
-	return alpha;
+	alpha_generated = 1;
+}
+
+void gen_alpha_dc(void)
+{
+	int i;
+
+	if (alpha_generated_dc)
+		return;
+
+	alpha_gen_dc = kmalloc_array(261, sizeof(u32), GFP_KERNEL);
+
+	for (i = 0; i < 261; i++) {
+		alpha_gen_dc[i] = alpha_generator(brightness_alpha_lut_dc,
+				ARRAY_SIZE(brightness_alpha_lut_dc), i);
+	}
+
+	alpha_generated_dc = 1;
+}
+
+static inline int brightness_to_alpha(int brightness)
+{
+	static const int level = 2001;
+
+	if (unlikely(brightness < 0))
+		return alpha_gen[0];
+
+	if (unlikely(brightness >= level))
+		return alpha_gen[level - 1];
+
+	return alpha_gen[brightness];
+}
+
+static inline int bl_to_alpha_dc(int brightness)
+{
+	static const int level = 261;
+
+	if (unlikely(brightness < 0))
+		return alpha_gen_dc[0];
+
+	if (unlikely(brightness >= level))
+		return alpha_gen_dc[level - 1];
+
+	return alpha_gen_dc[brightness];
 }
 
 bool oneplus_dimlayer_hbm_enable;
@@ -3429,17 +3454,14 @@ ssize_t oneplus_display_notify_aod_hid(struct device *dev,
 				       const char *buf, size_t count)
 {
 	int onscreenaod_hid = 0;
-	SDE_ATRACE_BEGIN("aod_hid_node");
 	sscanf(buf, "%du", &onscreenaod_hid);
 	//oneplus_onscreenaod_hid = !!onscreenaod_hid;
 	if (onscreenaod_hid == oneplus_onscreenaod_hid) {
-		SDE_ATRACE_END("oneplus_display_notify_fp_press");
 		return count;
 	}
 
-	pr_err("notify aod hid %d\n", onscreenaod_hid);
+	pr_debug("notify aod hid %d\n", onscreenaod_hid);
 	oneplus_onscreenaod_hid = onscreenaod_hid;
-	SDE_ATRACE_END("aod_hid_node");
 	return count;
 }
 
@@ -3462,7 +3484,6 @@ ssize_t oneplus_display_notify_fp_press(struct device *dev,
 	ktime_t now;
 	bool need_commit = false;
 	int onscreenfp_status = 0;
-	SDE_ATRACE_BEGIN("oneplus_display_notify_fp_press");
 	if ((connector == NULL) || (connector->encoder == NULL) ||
 	    (connector->encoder->bridge == NULL))
 		return 0;
@@ -3478,11 +3499,10 @@ ssize_t oneplus_display_notify_fp_press(struct device *dev,
 	sscanf(buf, "%du", &onscreenfp_status);
 	//onscreenfp_status = !!onscreenfp_status;
 	if (onscreenfp_status == oneplus_onscreenfp_status) {
-		SDE_ATRACE_END("oneplus_display_notify_fp_press");
 		return count;
 	}
 
-	pr_err("notify fingerpress %d\n", onscreenfp_status);
+	pr_debug("notify fingerpress %d\n", onscreenfp_status);
 	oneplus_onscreenfp_status = onscreenfp_status;
 
 	drm_modeset_lock_all(drm_dev);
@@ -3501,7 +3521,6 @@ ssize_t oneplus_display_notify_fp_press(struct device *dev,
 			drm_atomic_state_clear(state);
 	}
 	drm_modeset_unlock_all(drm_dev);
-	SDE_ATRACE_END("oneplus_display_notify_fp_press");
 	return count;
 }
 extern int aod_layer_hide;
@@ -3530,7 +3549,6 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 	int err = 0, rc = 0;
 	int dim_status = 0;
 
-	SDE_ATRACE_BEGIN("oneplus_display_notify_dim");
 	if ((connector == NULL) || (connector->encoder == NULL) ||
 	    (connector->encoder->bridge == NULL))
 		return 0;
@@ -3547,11 +3565,10 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 		dim_status = 0;
 
 	if (dsi_display->panel->aod_status == 0 && (dim_status == 2)) {
-		pr_err("fp set it in normal status\n");
+		pr_debug("fp set it in normal status\n");
 		if (dim_status == oneplus_dim_status)
 			return count;
 		oneplus_dim_status = dim_status;
-		SDE_ATRACE_END("oneplus_display_notify_dim");
 		return count;
 	} else if (dsi_display->panel->aod_status == 1 && dim_status == 2) {
 		oneplus_onscreenfp_status = 1;
@@ -3571,7 +3588,7 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 	oneplus_dimlayer_hbm_enable = oneplus_dim_status != 0;
 	backup_dimlayer_hbm = oneplus_dimlayer_hbm_enable;
 	backup_dim_status = oneplus_dim_status;
-	pr_err("notify dim %d,aod = %d press= %d aod_hide =%d oneplus_dimlayer_hbm_enable = %d\n",
+	pr_debug("notify dim %d,aod = %d press= %d aod_hide =%d oneplus_dimlayer_hbm_enable = %d\n",
 	       oneplus_dim_status, dsi_display->panel->aod_status, oneplus_onscreenfp_status, aod_layer_hide, oneplus_dimlayer_hbm_enable);
 	if (oneplus_dim_status == 1 && HBM_flag) {
 		rc = dsi_panel_tx_cmd_set(dsi_display->panel, DSI_CMD_SET_HBM_ON_5);
@@ -3579,7 +3596,7 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 			pr_err("failed to send DSI_CMD_SET_HBM_ON_5 cmds, rc=%d\n", rc);
 			return rc;
 		}
-		pr_err("Notify dim not commit,send DSI_CMD_SET_HBM_ON_5 cmds\n");
+		pr_debug("Notify dim not commit,send DSI_CMD_SET_HBM_ON_5 cmds\n");
 		return count;
 	}
 	drm_modeset_lock_all(drm_dev);
@@ -3594,7 +3611,6 @@ ssize_t oneplus_display_notify_dim(struct device *dev,
 			drm_atomic_state_clear(state);
 	}
 	drm_modeset_unlock_all(drm_dev);
-	SDE_ATRACE_END("oneplus_display_notify_dim");
 	return count;
 }
 /***************************************************************************/
@@ -3626,7 +3642,6 @@ sde_crtc_config_fingerprint_dim_layer(struct drm_crtc_state *crtc_state, int sta
 		SDE_ERROR("invalid kms\n");
 		return -EINVAL;
 	}
-	SDE_ATRACE_BEGIN("set_dim_layer");
 
 	cstate = to_sde_crtc_state(crtc_state);
 
@@ -3654,7 +3669,6 @@ sde_crtc_config_fingerprint_dim_layer(struct drm_crtc_state *crtc_state, int sta
 	fingerprint_dim_layer->rect.h = mode->vdisplay;
 	fingerprint_dim_layer->color_fill = (struct sde_mdss_color) {0, 0, 0, alpha};
 	cstate->fingerprint_dim_layer = fingerprint_dim_layer;
-	SDE_ATRACE_END("set_dim_layer");
 	return 0;
 }
 
@@ -4022,7 +4036,6 @@ static void _sde_crtc_wait_for_fences(struct drm_crtc *crtc)
 	 * if its fence has timed out. Call input fence wait multiple times if
 	 * fence wait is interrupted due to interrupt call.
 	 */
-	SDE_ATRACE_BEGIN("plane_wait_input_fence");
 	drm_atomic_crtc_for_each_plane(plane, crtc) {
 		do {
 			kt_wait = ktime_sub(kt_end, ktime_get());
@@ -4034,7 +4047,6 @@ static void _sde_crtc_wait_for_fences(struct drm_crtc *crtc)
 			rc = sde_plane_wait_input_fence(plane, wait_ms);
 		} while (wait_ms && rc == -ERESTARTSYS);
 	}
-	SDE_ATRACE_END("plane_wait_input_fence");
 }
 
 static void _sde_crtc_setup_mixer_for_encoder(
@@ -4215,7 +4227,6 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (!sde_kms)
 		return;
 
-	SDE_ATRACE_BEGIN("crtc_atomic_begin");
 	SDE_DEBUG("crtc%d\n", crtc->base.id);
 
 	sde_crtc = to_sde_crtc(crtc);
@@ -4244,7 +4255,7 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	 * nothing else needs to be done.
 	 */
 	if (unlikely(!sde_crtc->num_mixers))
-		goto end;
+		return;
 
 	if (_sde_crtc_get_ctlstart_timeout(crtc)) {
 		_sde_crtc_blend_setup(crtc, old_state, false);
@@ -4287,8 +4298,6 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 	 * in command mode.
 	 */
 
-end:
-	SDE_ATRACE_END("crtc_atomic_begin");
 }
 
 static void sde_crtc_atomic_flush(struct drm_crtc *crtc,
@@ -4349,7 +4358,6 @@ static void sde_crtc_atomic_flush(struct drm_crtc *crtc,
 	if (unlikely(!sde_crtc->num_mixers))
 		return;
 
-	SDE_ATRACE_BEGIN("sde_crtc_atomic_flush");
 
 	/*
 	 * For planes without commit update, drm framework will not add
@@ -4396,7 +4404,6 @@ static void sde_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* Kickoff will be scheduled by outer layer */
-	SDE_ATRACE_END("sde_crtc_atomic_flush");
 }
 
 /**
@@ -4494,7 +4501,6 @@ static int _sde_crtc_commit_kickoff_rot(struct drm_crtc *crtc,
 		cstate->sbuf_cfg.rot_op_mode == SDE_CTL_ROT_OP_MODE_OFFLINE)
 		return 0;
 
-	SDE_ATRACE_BEGIN("crtc_kickoff_rot");
 
 	if (cstate->sbuf_cfg.rot_op_mode != SDE_CTL_ROT_OP_MODE_OFFLINE &&
 			sde_crtc->sbuf_rot_id_delta) {
@@ -4539,7 +4545,6 @@ static int _sde_crtc_commit_kickoff_rot(struct drm_crtc *crtc,
 	/* save this in sde_crtc for next commit cycle */
 	sde_crtc->sbuf_op_mode_old = cstate->sbuf_cfg.rot_op_mode;
 
-	SDE_ATRACE_END("crtc_kickoff_rot");
 	return rc;
 }
 
@@ -4809,7 +4814,6 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 	if (unlikely(!sde_crtc->num_mixers))
 		return;
 
-	SDE_ATRACE_BEGIN("crtc_commit");
 
 	is_error = _sde_crtc_prepare_for_kickoff_rot(dev, crtc);
 
@@ -4849,9 +4853,7 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 	}
 
 	sde_crtc_calc_fps(sde_crtc);
-	SDE_ATRACE_BEGIN("flush_event_thread");
 	_sde_crtc_flush_event_thread(crtc);
-	SDE_ATRACE_END("flush_event_thread");
 	sde_crtc->plane_mask_old = crtc->state->plane_mask;
 
 	if (atomic_inc_return(&sde_crtc->frame_pending) == 1) {
@@ -4877,8 +4879,6 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 		if (_sde_crtc_commit_kickoff_rot(crtc, cstate))
 			is_error = true;
 
-	sde_vbif_clear_errors(sde_kms);
-
 	if (is_error) {
 		_sde_crtc_remove_pipe_flush(crtc);
 		_sde_crtc_blend_setup(crtc, old_state, false);
@@ -4900,7 +4900,6 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 		spin_unlock_irqrestore(&dev->event_lock, flags);
 	}
 
-	SDE_ATRACE_END("crtc_commit");
 }
 
 /**
@@ -5797,7 +5796,7 @@ static int sde_crtc_onscreenfinger_atomic_check(struct sde_crtc_state *cstate,
 		dim_mode = 0;
 		oneplus_dim_status = 0;
 		oneplus_dimlayer_hbm_enable = false;
-		pr_err("current dim = %d, oneplus_dimlayer_hbm_enable = %d\n", oneplus_dim_status, oneplus_dimlayer_hbm_enable);
+		pr_debug("current dim = %d, oneplus_dimlayer_hbm_enable = %d\n", oneplus_dim_status, oneplus_dimlayer_hbm_enable);
 	}
 
 	for (i = 0; i < cnt; i++) {
@@ -5828,10 +5827,8 @@ static int sde_crtc_onscreenfinger_atomic_check(struct sde_crtc_state *cstate,
 
 	if (finger_type) {
 		if (aod_index >= 0 && aod_mode == 1) {
-			SDE_ATRACE_BEGIN("aod_layer_qbt_hid");
 			pstates[aod_index].sde_pstate->property_values[PLANE_PROP_ALPHA].value = 0;
 			aod_index = -1;
-			SDE_ATRACE_END("aod_layer_qbt_hid");
 		}
 		return 0;
 	}
@@ -5845,7 +5842,7 @@ static int sde_crtc_onscreenfinger_atomic_check(struct sde_crtc_state *cstate,
 			    display->panel->bl_config.bl_level < op_dimlayer_bl_alpha) {
 				dim_backlight = 1;
 				op_dimlayer_bl = 1;
-				if (mode_fps == 60 && dsi_panel_name == DSI_PANEL_SAMSUNG_S6E3HC2)
+				if (mode_fps == 60 && dsi_panel_hw_type == DSI_PANEL_SAMSUNG_S6E3HC2)
 					dim_backlight_pre = 1;
 			} else {
 				op_dimlayer_bl = 0;
@@ -5853,11 +5850,11 @@ static int sde_crtc_onscreenfinger_atomic_check(struct sde_crtc_state *cstate,
 		} else {
 			op_dimlayer_bl = 0;
 			if (dim_backlight_pre) {
-				if (mode_fps == 60 && dsi_panel_name == DSI_PANEL_SAMSUNG_S6E3HC2)
+				if (mode_fps == 60 && dsi_panel_hw_type == DSI_PANEL_SAMSUNG_S6E3HC2)
 					dim_backlight = 1;
 
 				dim_backlight_pre = 0;
-				SDE_ERROR("show dl one more frame %d\n", dsi_panel_name);
+				SDE_ERROR("show dl one more frame %d\n", dsi_panel_hw_type);
 			}
 		}
 	}
@@ -5931,6 +5928,14 @@ static int sde_crtc_onscreenfinger_atomic_check(struct sde_crtc_state *cstate,
 		return 0;
 	}
 
+	if (fp_mode == 1) {
+		display->panel->dim_status = true;
+		cstate->fingerprint_pressed = true;
+	} else if (fp_mode == 0) {
+		display->panel->dim_status = false;
+		cstate->fingerprint_pressed = false;
+	}
+
 	return 0;
 }
 
@@ -5939,7 +5944,7 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 {
 	struct drm_device *dev;
 	struct sde_crtc *sde_crtc;
-	struct plane_state *pstates = NULL;
+	struct plane_state pstates[SDE_PSTATES_MAX] __aligned(8);
 	struct sde_crtc_state *cstate;
 	struct sde_kms *kms;
 
@@ -5949,7 +5954,7 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 
 	int cnt = 0, rc = 0, mixer_width, i, z_pos, mixer_height;
 
-	struct sde_multirect_plane_states *multirect_plane = NULL;
+	struct sde_multirect_plane_states multirect_plane[SDE_MULTIRECT_PLANE_MAX] __aligned(8);
 	int multirect_count = 0;
 	const struct drm_plane_state *pipe_staged[SSPP_MAX];
 	int left_zpos_cnt = 0, right_zpos_cnt = 0;
@@ -5980,17 +5985,8 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 		goto end;
 	}
 
-	pstates = kcalloc(SDE_PSTATES_MAX,
-			sizeof(struct plane_state), GFP_KERNEL);
-
-	multirect_plane = kcalloc(SDE_MULTIRECT_PLANE_MAX,
-			sizeof(struct sde_multirect_plane_states),
-			GFP_KERNEL);
-
-	if (!pstates || !multirect_plane) {
-		rc = -ENOMEM;
-		goto end;
-	}
+	memset(pstates, 0, sizeof(pstates));
+	memset(multirect_plane, 0, sizeof(multirect_plane));
 
 	mode = &state->adjusted_mode;
 	SDE_DEBUG("%s: check", sde_crtc->name);
@@ -6250,8 +6246,6 @@ static int sde_crtc_atomic_check(struct drm_crtc *crtc,
 	}
 
 end:
-	kfree(pstates);
-	kfree(multirect_plane);
 	_sde_crtc_rp_free_unused(&cstate->rp);
 	return rc;
 }
@@ -6705,7 +6699,7 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 	int idx, ret;
 	uint64_t fence_fd;
 
-	if (!crtc || !state || !property) {
+	if (unlikely(!crtc || !state || !property)) {
 		SDE_ERROR("invalid argument(s)\n");
 		return -EINVAL;
 	}
@@ -6713,16 +6707,15 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 	sde_crtc = to_sde_crtc(crtc);
 	cstate = to_sde_crtc_state(state);
 
-	SDE_ATRACE_BEGIN("sde_crtc_atomic_set_property");
 	/* check with cp property system first */
 	ret = sde_cp_crtc_set_property(crtc, property, val);
-	if (ret != -ENOENT)
+	if (unlikely(ret != -ENOENT))
 		goto exit;
 
 	/* if not handled by cp, check msm_property system */
 	ret = msm_property_atomic_set(&sde_crtc->property_info,
 			&cstate->property_state, property, val);
-	if (ret)
+	if (unlikely(ret))
 		goto exit;
 
 	idx = msm_property_index(&sde_crtc->property_info, property);
@@ -6760,18 +6753,18 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 		cstate->bw_split_vote = true;
 		break;
 	case CRTC_PROP_OUTPUT_FENCE:
-		if (!val)
+		if (unlikely(!val))
 			goto exit;
 
 		ret = _sde_crtc_get_output_fence(crtc, state, &fence_fd);
-		if (ret) {
+		if (unlikely(ret)) {
 			SDE_ERROR("fence create failed rc:%d\n", ret);
 			goto exit;
 		}
 
 		ret = copy_to_user((uint64_t __user *)(uintptr_t)val, &fence_fd,
 				sizeof(uint64_t));
-		if (ret) {
+		if (unlikely(ret)) {
 			SDE_ERROR("copy to user failed rc:%d\n", ret);
 			put_unused_fd(fence_fd);
 			ret = -EFAULT;
@@ -6798,7 +6791,6 @@ exit:
 				property->base.id, val);
 	}
 
-	SDE_ATRACE_END("sde_crtc_atomic_set_property");
 	return ret;
 }
 
@@ -7628,16 +7620,12 @@ struct drm_crtc *sde_crtc_init(struct drm_device *dev, struct drm_plane *plane)
 
 	sde_crtc_install_properties(crtc, kms->catalog);
 
-	if (dsi_panel_name == DSI_PANEL_SAMSUNG_S6E3HC2 || dsi_panel_name == DSI_PANEL_SAMSUNG_S6E3FC2X01) {
-		for (i = 0; i < 21; i++)
-			brightness_alpha_lut[i] = brightness_alpha_lut_1[i];
-	} else if (dsi_panel_name == DSI_PANEL_SAMSUNG_SOFEF03F_M) {
-		for (i = 0; i < 21; i++)
-			brightness_alpha_lut[i] = brightness_alpha_lut_2[i];
+	if (dsi_panel_hw_type == DSI_PANEL_SAMSUNG_SOFEF03F_M) {
+		gen_alpha(brightness_alpha_lut_2);
 	} else {
-		for (i = 0; i < 21; i++)
-			brightness_alpha_lut[i] = brightness_alpha_lut_1[i];
+		gen_alpha(brightness_alpha_lut_1);
 	}
+	gen_alpha_dc();
 
 	/* Install color processing properties */
 	sde_cp_crtc_init(crtc);
@@ -7718,6 +7706,7 @@ static int _sde_crtc_event_enable(struct sde_kms *kms,
 			if (!node)
 				return -ENOMEM;
 			INIT_LIST_HEAD(&node->list);
+			INIT_LIST_HEAD(&node->irq.list);
 			node->func = custom_events[i].func;
 			node->event = event;
 			node->state = IRQ_NOINIT;
@@ -7742,8 +7731,6 @@ static int _sde_crtc_event_enable(struct sde_kms *kms,
 			kfree(node);
 			return ret;
 		}
-
-		INIT_LIST_HEAD(&node->irq.list);
 
 		mutex_lock(&crtc->crtc_lock);
 		ret = node->func(crtc_drm, true, &node->irq);

@@ -40,7 +40,6 @@
 #include <linux/cpufreq.h>
 #include <linux/input.h>
 #include <linux/proc_fs.h>
-#include "../sde/sde_trace.h"
 
 #define to_dsi_display(x) container_of(x, struct dsi_display, host)
 #define INT_BASE_10 10
@@ -233,120 +232,117 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
-	if (strcmp(dsi_display->panel->name,
-		   "samsung s6e3fc2x01 cmd mode dsi panel") == 0) {
+	if (dsi_display->panel->hw_type == DSI_PANEL_SAMSUNG_S6E3FC2X01) {
 		if (bl_lvl != 0 && panel->bl_config.bl_level == 0) {
 			if (panel->naive_display_p3_mode) {
 				mdelay(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_P3_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_P3_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_P3_ON);
 			}
 			if (panel->naive_display_wide_color_mode) {
 				mdelay(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON);
 			}
 			if (panel->naive_display_srgb_color_mode) {
 				mdelay(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON);
 			}
 			if (panel->naive_display_customer_srgb_mode) {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_RGB_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_RGB_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_RGB_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_RGB_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_RGB_OFF cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_RGB_OFF);
 			}
 			if (panel->naive_display_customer_p3_mode) {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_P3_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_P3_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_P3_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_P3_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_P3_OFF cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_P3_OFF);
 			}
 		}
 	}
 
-	if (strcmp(dsi_display->panel->name,
-		   "samsung dsc cmd mode oneplus dsi panel") == 0) {
+	if (dsi_display->panel->hw_type == DSI_PANEL_SAMSUNG_S6E3HC2) {
 		if (bl_lvl != 0 && panel->bl_config.bl_level == 0) {
 			if (panel->naive_display_p3_mode) {
 				mdelay(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_P3_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_P3_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_P3_ON);
 			}
 			if (panel->naive_display_wide_color_mode) {
 				mdelay(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON);
 			}
 			if (panel->naive_display_srgb_color_mode) {
 				mdelay(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON);
 			}
 			if (panel->naive_display_loading_effect_mode) {
-				pr_err("Send DSI_CMD_LOADING_EFFECT_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_EFFECT_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_EFFECT_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_EFFECT_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_EFFECT_OFF cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_EFFECT_OFF);
 			}
 			if (panel->naive_display_customer_srgb_mode) {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_RGB_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_RGB_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_RGB_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_RGB_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_RGB_OFF cmds\n");
 				//rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_RGB_OFF);
 			}
 			if (panel->naive_display_customer_p3_mode) {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_P3_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_P3_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_P3_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_P3_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_P3_OFF cmds\n");
 				// rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_P3_OFF);
 			}
 		}
 	}
 
-	if (strcmp(dsi_display->panel->name,
-		   "samsung sofef03f_m fhd cmd mode dsc dsi panel") == 0) {
+	if (dsi_display->panel->hw_type == DSI_PANEL_SAMSUNG_SOFEF03F_M) {
 		if (bl_lvl != 0 && panel->bl_config.bl_level == 0) {
 			if (panel->naive_display_p3_mode) {
 				msleep(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_P3_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_P3_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_P3_ON);
 			}
 			if (panel->naive_display_wide_color_mode) {
 				msleep(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON);
 			}
 			if (panel->naive_display_srgb_color_mode) {
 				msleep(20);
-				pr_err("Send DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON cmds\n");
+				pr_debug("Send DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON);
 			}
 			if (panel->naive_display_loading_effect_mode) {
-				pr_err("Send DSI_CMD_LOADING_EFFECT_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_EFFECT_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_EFFECT_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_EFFECT_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_EFFECT_OFF cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_EFFECT_OFF);
 			}
 			if (panel->naive_display_customer_srgb_mode) {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_RGB_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_RGB_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_RGB_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_RGB_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_RGB_OFF cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_RGB_OFF);
 			}
 			if (panel->naive_display_customer_p3_mode) {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_P3_ON cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_P3_ON cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_P3_ON);
 			} else {
-				pr_err("Send DSI_CMD_LOADING_CUSTOMER_P3_OFF cmds\n");
+				pr_debug("Send DSI_CMD_LOADING_CUSTOMER_P3_OFF cmds\n");
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_LOADING_CUSTOMER_P3_OFF);
 			}
 		}
@@ -387,10 +383,7 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 error:
 	mutex_unlock(&panel->panel_lock);
 
-	if ((strcmp(dsi_display->panel->name, "samsung dsc cmd mode oneplus dsi panel") == 0 ||
-	     strcmp(panel->name, "samsung s6e3fc2x01 cmd mode dsi panel") ==  0 ||
-	     strcmp(panel->name, "samsung sofef03f_m fhd cmd mode dsc dsi panel") == 0) &&
-	    (SERIAL_NUMBER_flag == 0)) {
+	if (dsi_display->panel->hw_type != DSI_PANEL_DEFAULT && (SERIAL_NUMBER_flag == 0)) {
 		dsi_display_get_serial_number_AT(connector);
 	}
 
@@ -650,36 +643,56 @@ static void dsi_display_register_err_flag_irq(struct dsi_display *display)
 static irqreturn_t dsi_display_panel_te_irq_handler(int irq, void *data)
 {
 	struct dsi_display *display = (struct dsi_display *)data;
+	struct dsi_display_te_listener *tl;
 
-	/*
-	 * This irq handler is used for sole purpose of identifying
-	 * ESD attacks on panel and we can safely assume IRQ_HANDLED
-	 * in case of display not being initialized yet
-	 */
-	if (!display)
+	if (unlikely(!display))
 		return IRQ_HANDLED;
 
 	SDE_EVT32(SDE_EVTLOG_FUNC_CASE1);
-	complete_all(&display->esd_te_gate);
+
+	spin_lock(&display->te_lock);
+	list_for_each_entry(tl, &display->te_listeners, head)
+		tl->handler(tl);
+	spin_unlock(&display->te_lock);
+
 	return IRQ_HANDLED;
 }
 
-static void dsi_display_change_te_irq_status(struct dsi_display *display,
-					bool enable)
+int dsi_display_add_te_listener(struct dsi_display *display,
+				struct dsi_display_te_listener *tl)
 {
-	if (!display) {
-		pr_err("Invalid params\n");
-		return;
-	}
+	unsigned long flags;
+	bool needs_enable;
 
-	/* Handle unbalanced irq enable/disbale calls */
-	if (enable && !display->is_te_irq_enabled) {
+	if (!display || !tl)
+		return -ENOENT;
+
+	spin_lock_irqsave(&display->te_lock, flags);
+	needs_enable = list_empty(&display->te_listeners);
+	list_add(&tl->head, &display->te_listeners);
+	spin_unlock_irqrestore(&display->te_lock, flags);
+
+	if (needs_enable)
 		enable_irq(gpio_to_irq(display->disp_te_gpio));
-		display->is_te_irq_enabled = true;
-	} else if (!enable && display->is_te_irq_enabled) {
-		disable_irq(gpio_to_irq(display->disp_te_gpio));
-		display->is_te_irq_enabled = false;
-	}
+
+	return 0;
+}
+
+int dsi_display_remove_te_listener(struct dsi_display *display,
+				   struct dsi_display_te_listener *tl)
+{
+	unsigned long flags;
+
+	if (!display || !tl)
+		return -ENOENT;
+
+	spin_lock_irqsave(&display->te_lock, flags);
+	list_del(&tl->head);
+	if (list_empty(&display->te_listeners))
+		disable_irq_nosync(gpio_to_irq(display->disp_te_gpio));
+	spin_unlock_irqrestore(&display->te_lock, flags);
+
+	return 0;
 }
 
 static void dsi_display_register_te_irq(struct dsi_display *display)
@@ -706,15 +719,16 @@ static void dsi_display_register_te_irq(struct dsi_display *display)
 		goto error;
 	}
 
-	init_completion(&display->esd_te_gate);
 	te_irq = gpio_to_irq(display->disp_te_gpio);
+
+	spin_lock_init(&display->te_lock);
+	INIT_LIST_HEAD(&display->te_listeners);
 
 	/* Avoid deferred spurious irqs with disable_irq() */
 	irq_set_status_flags(te_irq, IRQ_DISABLE_UNLAZY);
 
 	rc = devm_request_irq(dev, te_irq, dsi_display_panel_te_irq_handler,
-			      IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-			      "TE_GPIO", display);
+			IRQF_TRIGGER_RISING, "TE_GPIO", display);
 	if (rc) {
 		pr_err("TE request_irq failed for ESD rc:%d\n", rc);
 		irq_clear_status_flags(te_irq, IRQ_DISABLE_UNLAZY);
@@ -722,7 +736,6 @@ static void dsi_display_register_te_irq(struct dsi_display *display)
 	}
 
 	disable_irq(te_irq);
-	display->is_te_irq_enabled = false;
 
 	return;
 
@@ -1047,7 +1060,7 @@ static int dsi_display_status_reg_read(struct dsi_display *display)
 	mode = display->panel->cur_mode;
 	panel = display->panel;
 
-	if (strcmp(panel->name, "samsung dsc cmd mode oneplus dsi panel") == 0) {
+	if (panel->hw_type == DSI_PANEL_SAMSUNG_S6E3HC2) {
 		count = mode->priv_info->cmd_sets[DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_ON].count;
 		if (!count) {
 			pr_err("This panel does not read register\n");
@@ -1192,7 +1205,7 @@ static int dsi_display_status_reg_read(struct dsi_display *display)
 		} else {
 			rc = 1;
 		}
-	} else if (strcmp(panel->name, "samsung s6e3fc2x01 cmd mode dsi panel") == 0) {
+	} else if (panel->hw_type == DSI_PANEL_SAMSUNG_S6E3FC2X01) {
 		count = mode->priv_info->cmd_sets[DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_ON].count;
 		if (!count) {
 			pr_err("This panel does not read register\n");
@@ -1243,7 +1256,7 @@ static int dsi_display_status_reg_read(struct dsi_display *display)
 			rc = -1;
 		else
 			rc = 1;
-	} else if (strcmp(panel->name, "samsung sofef03f_m fhd cmd mode dsc dsi panel") == 0) {
+	} else 	if (panel->hw_type == DSI_PANEL_SAMSUNG_SOFEF03F_M) {
 		count = mode->priv_info->cmd_sets[DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_ON].count;
 		if (!count) {
 			pr_err("This panel does not support esd register reading\n");
@@ -1348,21 +1361,31 @@ static int dsi_display_status_bta_request(struct dsi_display *display)
 	return rc;
 }
 
+static void _handle_esd_te(struct dsi_display_te_listener *tl)
+{
+	struct completion *esd_te_gate = tl->data;
+
+	complete(esd_te_gate);
+}
+
 static int dsi_display_status_check_te(struct dsi_display *display)
 {
 	int rc = 1;
 	int const esd_te_timeout = msecs_to_jiffies(3*20);
+	DECLARE_COMPLETION(esd_te_gate);
+	struct dsi_display_te_listener tl = {
+		.handler = _handle_esd_te,
+		.data = &esd_te_gate,
+	};
 
-	dsi_display_change_te_irq_status(display, true);
+	dsi_display_add_te_listener(display, &tl);
 
-	reinit_completion(&display->esd_te_gate);
-	if (!wait_for_completion_timeout(&display->esd_te_gate,
-				esd_te_timeout)) {
+	if (!wait_for_completion_timeout(&esd_te_gate, esd_te_timeout)) {
 		pr_err("TE check failed\n");
 		rc = -EINVAL;
 	}
 
-	dsi_display_change_te_irq_status(display, false);
+	dsi_display_remove_te_listener(display, &tl);
 
 	return rc;
 }
@@ -1383,11 +1406,6 @@ int dsi_display_check_status(struct drm_connector *connector, void *display,
 	panel = dsi_display->panel;
 
 	dsi_panel_acquire_panel_lock(panel);
-
-	if (strcmp(dsi_display->panel->name,
-		   "samsung findx dsc cmd mode dsi panel") == 0) {
-		goto release_panel_lock;
-	}
 
 	if (!panel->panel_initialized) {
 		pr_debug("Panel not initialized\n");
@@ -1690,12 +1708,12 @@ int dsi_display_set_power(struct drm_connector *connector,
 
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
-		pr_err("SDE_MODE_DPMS_LP1\n");
+		pr_debug("SDE_MODE_DPMS_LP1\n");
 		rc = dsi_panel_set_lp1(display->panel);
 		if (display->panel->aod_mode && display->panel->aod_mode != 2) {
 			display->panel->aod_status = 0;
 			rc = dsi_panel_set_aod_mode(display->panel, 5);
-			pr_err("Send dsi_panel_set_aod_mode 5 cmds\n");
+			pr_debug("Send dsi_panel_set_aod_mode 5 cmds\n");
 			if (rc) {
 				pr_err("[%s] failed to send dsi_panel_set_aod_mode cmds, rc=%d\n",
 				       display->panel->name, rc);
@@ -1703,11 +1721,11 @@ int dsi_display_set_power(struct drm_connector *connector,
 		}
 		break;
 	case SDE_MODE_DPMS_LP2:
-		pr_err("SDE_MODE_DPMS_LP2\n");
+		pr_debug("SDE_MODE_DPMS_LP2\n");
 		rc = dsi_panel_set_lp2(display->panel);
 		break;
 	case SDE_MODE_DPMS_ON:
-		pr_err("SDE_MODE_DPMS_ON\n");
+		pr_debug("SDE_MODE_DPMS_ON\n");
 		if (display->panel->power_mode == SDE_MODE_DPMS_LP1 ||
 			display->panel->power_mode == SDE_MODE_DPMS_LP2)
 			rc = dsi_panel_set_nolp(display->panel);
@@ -2053,7 +2071,6 @@ static ssize_t debugfs_alter_esd_check_mode(struct file *file,
 	if (!strcmp(buf, "te_signal_check\n")) {
 		pr_info("ESD check is switched to TE mode by user\n");
 		esd_config->status_mode = ESD_MODE_PANEL_TE;
-		dsi_display_change_te_irq_status(display, true);
 	}
 
 	if (!strcmp(buf, "reg_read\n")) {
@@ -2066,8 +2083,6 @@ static ssize_t debugfs_alter_esd_check_mode(struct file *file,
 			goto error;
 		}
 		esd_config->status_mode = ESD_MODE_REG_READ;
-		if (dsi_display_is_te_based_esd(display))
-			dsi_display_change_te_irq_status(display, false);
 	}
 
 	if (!strcmp(buf, "esd_sw_sim_success\n"))
@@ -2188,7 +2203,7 @@ static int dsi_display_debugfs_init(struct dsi_display *display)
 	dir = debugfs_create_dir(display->name, NULL);
 	if (IS_ERR_OR_NULL(dir)) {
 		rc = PTR_ERR(dir);
-		pr_err("[%s] debugfs create dir failed, rc = %d\n",
+		pr_debug("[%s] debugfs create dir failed, rc = %d\n",
 		       display->name, rc);
 		goto error;
 	}
@@ -4409,8 +4424,7 @@ static int dsi_display_res_init(struct dsi_display *display)
 		goto error_ctrl_put;
 	}
 
-	if (strcmp(display->panel->name,
-		   "samsung dsc cmd mode oneplus dsi panel") == 0) {
+	if (display->panel->hw_type == DSI_PANEL_SAMSUNG_S6E3HC2) {
 		INIT_DELAYED_WORK(&display->panel->gamma_read_work,
 				  dsi_display_gamma_read_work);
 		pr_err("INIT_DELAYED_WORK: dsi_display_gamma_read_work\n");
@@ -5555,7 +5569,7 @@ static int dsi_display_force_update_dsi_clk(struct dsi_display *display)
 	rc = dsi_display_link_clk_force_update_ctrl(display->dsi_clk_handle);
 
 	if (!rc) {
-		pr_info("dsi bit clk has been configured to %d\n",
+		pr_debug("dsi bit clk has been configured to %d\n",
 			display->cached_clk_rate);
 
 		atomic_set(&display->clkrate_change_pending, 0);
@@ -5779,11 +5793,7 @@ static int dsi_display_bind(struct device *dev,
 		goto error;
 	}
 
-	rc = dsi_display_debugfs_init(display);
-	if (rc) {
-		pr_err("[%s] debugfs init failed, rc=%d\n", display->name, rc);
-		goto error;
-	}
+	dsi_display_debugfs_init(display);
 
 	atomic_set(&display->clkrate_change_pending, 0);
 	display->cached_clk_rate = 0;
@@ -7409,7 +7419,7 @@ int dsi_display_validate_mode_change(struct dsi_display *display,
 				dynamic_fps = mode_fps;
 				notifier_data.data = &dynamic_fps;
 				notifier_data.id = MSM_DRM_PRIMARY_DISPLAY;
-				pr_err("set fps: %d, fresh_rate_report_enable : %d\n",
+				pr_debug("set fps: %d, fresh_rate_report_enable : %d\n",
 				       dynamic_fps, fresh_rate_report_enable);
 				msm_drm_notifier_call_chain(
 					MSM_DRM_EARLY_EVENT_BLANK,
@@ -7423,7 +7433,7 @@ int dsi_display_validate_mode_change(struct dsi_display *display,
 			}
 
 			if (!dfps_caps.dfps_support) {
-				pr_err("invalid mode dfps not supported\n");
+				pr_debug("invalid mode dfps not supported\n");
 				rc = -ENOTSUPP;
 				goto error;
 			}
@@ -8237,7 +8247,6 @@ int dsi_display_pre_kickoff(struct drm_connector *connector,
 	int rc = 0;
 	int i;
 
-	SDE_ATRACE_BEGIN("dsi_display_pre_kickoff");
 	/* check and setup MISR */
 	if (display->misr_enable)
 		_dsi_display_setup_misr(display);
@@ -8279,7 +8288,6 @@ wait_failure:
 		mutex_unlock(&display->display_lock);
 	}
 
-	SDE_ATRACE_END("dsi_display_pre_kickoff");
 	return rc;
 }
 
@@ -8370,7 +8378,6 @@ int dsi_display_enable(struct dsi_display *display)
 	/* Engine states and panel states are populated during splash
 	 * resource init and hence we return early
 	 */
-	SDE_ATRACE_BEGIN("dsi_display_enable");
 
 	if (display->is_cont_splash_enabled) {
 
@@ -8394,7 +8401,7 @@ int dsi_display_enable(struct dsi_display *display)
 	WRITE_ONCE(cur_refresh_rate, mode->timing.refresh_rate);
 
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
-		rc = dsi_panel_post_switch(display->panel);
+		rc = dsi_panel_switch(display->panel);
 		if (rc) {
 			pr_err("[%s] failed to switch DSI panel mode, rc=%d\n",
 				   display->name, rc);
@@ -8421,7 +8428,7 @@ int dsi_display_enable(struct dsi_display *display)
 	}
 
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
-		rc = dsi_panel_switch(display->panel);
+		rc = dsi_panel_post_switch(display->panel);
 		if (rc)
 			pr_err("[%s] failed to switch DSI panel mode, rc=%d\n",
 				   display->name, rc);
@@ -8459,7 +8466,6 @@ error:
 	mutex_unlock(&display->display_lock);
 	SDE_EVT32(SDE_EVTLOG_FUNC_EXIT);
 
-	SDE_ATRACE_END("dsi_display_enable");
 	return rc;
 }
 
@@ -8979,10 +8985,7 @@ int dsi_display_read_serial_number(struct dsi_display *dsi_display,
 	dsi_panel_acquire_panel_lock(panel);
 	mode = panel->cur_mode;
 
-	if ((strcmp(dsi_display->panel->name,
-		    "samsung dsc cmd mode oneplus dsi panel") == 0) ||
-	    (strcmp(dsi_display->panel->name,
-		    "samsung sofef03f_m fhd cmd mode dsc dsi panel") == 0)) {
+	if (dsi_display->panel->hw_type != DSI_PANEL_SAMSUNG_S6E3FC2X01) {
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LCDINFO_PRE);
 		if (rc) {
 			pr_err("Failed to send DSI_CMD_SET_LCDINFO_PRE commands\n");
@@ -9004,10 +9007,7 @@ int dsi_display_read_serial_number(struct dsi_display *dsi_display,
 	if (rc <= 0)
 		pr_err("Failed to get panel serial number, rc=%d\n", rc);
 
-	if ((strcmp(dsi_display->panel->name,
-		    "samsung dsc cmd mode oneplus dsi panel") == 0) ||
-	    (strcmp(dsi_display->panel->name,
-		    "samsung sofef03f_m fhd cmd mode dsc dsi panel") == 0)) {
+	if (dsi_display->panel->hw_type != DSI_PANEL_SAMSUNG_S6E3FC2X01) {
 		flags = 0;
 		cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_CODE_INFO].cmds;
 		if (cmds->last_command) {
@@ -9142,7 +9142,6 @@ int dsi_display_get_serial_number(struct drm_connector *connector)
 
 		memset(buf, 0, sizeof(buf));
 		dsi_display_read_serial_number(dsi_display, panel, buf, len);
-		memcpy(panel->buf_id, buf, 32);
 		panel_year =
 			2011 + ((buf[panel->panel_year_index - 1] >> 4) & 0x0f);
 		if (panel_year == 2011)
@@ -9456,7 +9455,6 @@ int dsi_display_get_serial_number_AT(struct drm_connector *connector)
 		}
 		memset(buf, 0, sizeof(buf));
 		dsi_display_read_serial_number(dsi_display, panel, buf, len);
-		memcpy(panel->buf_id, buf, 32);
 
 		panel_year =
 			2011 + ((buf[panel->panel_year_index - 1] >> 4) & 0x0f);
@@ -9625,12 +9623,7 @@ int dsi_display_set_hbm_brightness(struct drm_connector *connector, int level)
 
 	panel = dsi_display->panel;
 
-	if ((strcmp(dsi_display->panel->name,
-		    "samsung dsc cmd mode oneplus dsi panel") != 0) &&
-	    (strcmp(dsi_display->panel->name,
-		    "samsung s6e3fc2x01 cmd mode dsi panel") != 0) &&
-	    (strcmp(dsi_display->panel->name,
-		    "samsung sofef03f_m fhd cmd mode dsc dsi panel") != 0)) {
+	if (dsi_display->panel->hw_type == DSI_PANEL_DEFAULT) {
 		dsi_display->panel->hbm_brightness = 0;
 		return 0;
 	}
@@ -10324,6 +10317,11 @@ int dsi_display_set_aod_mode(struct drm_connector *connector, int level)
 	panel = dsi_display->panel;
 	panel->aod_mode = level;
 
+	if (dsi_display->panel->hw_type == DSI_PANEL_DEFAULT) {
+		dsi_display->panel->aod_mode = 0;
+		return 0;
+	}
+
 	mutex_lock(&dsi_display->display_lock);
 	if (!dsi_panel_initialized(panel)) {
 		goto error;
@@ -10627,8 +10625,7 @@ int dsi_display_update_dsi_panel_command(struct drm_connector *connector,
 
 	panel = dsi_display->panel;
 
-	if ((strcmp(panel->name, "samsung dsc cmd mode oneplus dsi panel") != 0) &&
-	    (strcmp(panel->name, "samsung sofef03f_m fhd cmd mode dsc dsi panel") != 0)) {
+	if (panel->hw_type == DSI_PANEL_SAMSUNG_S6E3FC2X01) {
 		return 0;
 	}
 
@@ -10742,8 +10739,7 @@ int dsi_display_update_dsi_seed_command(struct drm_connector *connector,
 
 	panel = dsi_display->panel;
 
-	if ((strcmp(panel->name, "samsung dsc cmd mode oneplus dsi panel") != 0) &&
-	    (strcmp(panel->name, "samsung sofef03f_m fhd cmd mode dsc dsi panel") != 0)) {
+	if (panel->hw_type == DSI_PANEL_SAMSUNG_S6E3FC2X01) {
 		return 0;
 	}
 
@@ -10774,9 +10770,9 @@ int dsi_display_update_dsi_seed_command(struct drm_connector *connector,
 
 	set = &panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_SEED_COMMAND];
 
-	if (strcmp(panel->name, "samsung dsc cmd mode oneplus dsi panel") == 0)
+	if (panel->hw_type == DSI_PANEL_SAMSUNG_S6E3HC2)
 		data[0] = WU_SEED_REGISTER;
-	if (strcmp(panel->name, "samsung sofef03f_m fhd cmd mode dsc dsi panel") == 0)
+	if (panel->hw_type == DSI_PANEL_SAMSUNG_SOFEF03F_M)
 		data[0] = UG_SEED_REGISTER;
 
 	rc = dsi_panel_update_dsi_seed_command(set->cmds,
@@ -10829,10 +10825,7 @@ int dsi_display_get_dsi_seed_command(struct drm_connector *connector, char *buf)
 	if ((dsi_display == NULL) || (dsi_display->panel == NULL))
 		return 0;
 
-	if ((strcmp(dsi_display->panel->name,
-		    "samsung dsc cmd mode oneplus dsi panel") != 0) &&
-	    (strcmp(dsi_display->panel->name,
-		    "samsung sofef03f_m fhd cmd mode dsc dsi panel") != 0)) {
+	if (dsi_display->panel->hw_type == DSI_PANEL_SAMSUNG_S6E3FC2X01) {
 		return 0;
 	}
 
