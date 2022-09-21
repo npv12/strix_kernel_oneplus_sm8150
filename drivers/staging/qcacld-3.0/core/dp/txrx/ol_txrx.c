@@ -138,8 +138,7 @@ int ol_peer_recovery_notifier_cb(struct notifier_block *block,
 	if (!peer)
 		return -EINVAL;
 
-	if (notif_data->offset + sizeof(struct peer_hang_data) >
-			QDF_WLAN_HANG_FW_OFFSET)
+	if (notif_data->offset >= QDF_WLAN_MAX_HOST_OFFSET)
 		return NOTIFY_STOP_MASK;
 
 	QDF_HANG_EVT_SET_HDR(&hang_data.tlv_header,
@@ -1438,6 +1437,15 @@ ol_txrx_pdev_post_attach(struct cdp_soc_t *soc_hdl, uint8_t pdev_id)
 	 * Initialize rx PN check characteristics for different security types.
 	 */
 	qdf_mem_zero(&pdev->rx_pn[0], sizeof(pdev->rx_pn));
+
+	/* WEP: 24-bit PN */
+	pdev->rx_pn[htt_sec_type_wep40].len =
+		pdev->rx_pn[htt_sec_type_wep104].len =
+			pdev->rx_pn[htt_sec_type_wep128].len = 24;
+
+	pdev->rx_pn[htt_sec_type_wep40].cmp =
+		pdev->rx_pn[htt_sec_type_wep104].cmp =
+			pdev->rx_pn[htt_sec_type_wep128].cmp = ol_rx_pn_cmp24;
 
 	/* TKIP: 48-bit TSC, CCMP: 48-bit PN */
 	pdev->rx_pn[htt_sec_type_tkip].len =
@@ -5878,17 +5886,11 @@ static uint32_t ol_txrx_get_cfg(struct cdp_soc_t *soc_hdl, enum cdp_dp_cfg cfg)
 	case cfg_dp_enable_p2p_ip_tcp_udp_checksum_offload:
 		value = cfg_ctx->p2p_ip_tcp_udp_checksum_offload;
 		break;
-	case cfg_dp_enable_nan_ip_tcp_udp_checksum_offload:
-		value = cfg_ctx->nan_tcp_udp_checksumoffload;
-		break;
 	case cfg_dp_tso_enable:
 		value = cfg_ctx->tso_enable;
 		break;
 	case cfg_dp_lro_enable:
 		value = cfg_ctx->lro_enable;
-		break;
-	case cfg_dp_sg_enable:
-		value = cfg_ctx->sg_enable;
 		break;
 	case cfg_dp_gro_enable:
 		value = cfg_ctx->gro_enable;
