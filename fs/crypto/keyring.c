@@ -645,6 +645,9 @@ int fscrypt_ioctl_add_key(struct file *filp, void __user *_uarg)
 	struct fscrypt_add_key_arg __user *uarg = _uarg;
 	struct fscrypt_add_key_arg arg;
 	struct fscrypt_master_key_secret secret;
+	u8 _kdf_key[RAW_SECRET_SIZE];
+	u8 *kdf_key;
+	unsigned int kdf_key_size;
 	int err;
 	int retry_count=0;
 
