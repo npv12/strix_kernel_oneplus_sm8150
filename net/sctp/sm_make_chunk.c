@@ -2356,6 +2356,7 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
 						 chunk->sctp_hdr->source, 0))
 				continue;
 			if (sctp_cmp_addr_exact(sctp_source(chunk), &addr))
+
 				src_match = 1;
 		}
 

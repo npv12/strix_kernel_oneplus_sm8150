@@ -41,10 +41,18 @@
 #include <linux/list_sort.h>
 #include <linux/hashtable.h>
 #include <linux/mount.h>
-#include <linux/dcache.h>
 
 #include <uapi/linux/dma-buf.h>
 #include <uapi/linux/magic.h>
+
+#ifdef OPLUS_FEATURE_LOWMEM_DBG
+/* usage when lowmmem occurs. */
+#include <soc/oplus/lowmem_dbg.h>
+#endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
+#if defined(OPLUS_FEATURE_PERFORMANCE) && defined(CONFIG_PROC_FS)
+#include <linux/proc_fs.h>
+#endif
 
 static atomic_long_t name_counter;
 
@@ -70,34 +78,18 @@ struct dma_proc {
 
 static struct dma_buf_list db_list;
 
-static void dmabuf_dent_put(struct dma_buf *dmabuf)
-{
-	if (atomic_dec_and_test(&dmabuf->dent_count)) {
-		kfree(dmabuf->name);
-		kfree(dmabuf);
-	}
-}
-
-
 static char *dmabuffs_dname(struct dentry *dentry, char *buffer, int buflen)
 {
 	struct dma_buf *dmabuf;
 	char name[DMA_BUF_NAME_LEN];
 	size_t ret = 0;
 
-	spin_lock(&dentry->d_lock);
 	dmabuf = dentry->d_fsdata;
-	if (!dmabuf || !atomic_add_unless(&dmabuf->dent_count, 1, 0)) {
-		spin_unlock(&dentry->d_lock);
-		goto out;
-	}
-	spin_unlock(&dentry->d_lock);
 	spin_lock(&dmabuf->name_lock);
 	if (dmabuf->name)
 		ret = strlcpy(name, dmabuf->name, DMA_BUF_NAME_LEN);
 	spin_unlock(&dmabuf->name_lock);
-	dmabuf_dent_put(dmabuf);
-out:
+	
 	return dynamic_dname(dentry, buffer, buflen, "/%s:%s",
 			     dentry->d_name.name, ret > 0 ? name : "");
 }
@@ -107,10 +99,9 @@ static void dma_buf_release(struct dentry *dentry)
 	struct dma_buf *dmabuf;
 
 	dmabuf = dentry->d_fsdata;
+	if (unlikely(!dmabuf))
+		return;
 
-	spin_lock(&dentry->d_lock);
-	dentry->d_fsdata = NULL;
-	spin_unlock(&dentry->d_lock);
 	BUG_ON(dmabuf->vmapping_counter);
 
 	/*
@@ -131,7 +122,8 @@ static void dma_buf_release(struct dentry *dentry)
 		reservation_object_fini(dmabuf->resv);
 
 	module_put(dmabuf->owner);
-	dmabuf_dent_put(dmabuf);
+    kfree(dmabuf->buf_name);
+    kfree(dmabuf);
 }
 
 static int dma_buf_file_release(struct inode *inode, struct file *file)
@@ -499,6 +491,14 @@ static inline int is_dma_buf_file(struct file *file)
 	return file->f_op == &dma_buf_fops;
 }
 
+#ifdef OPLUS_FEATURE_LOWMEM_DBG
+/* usage when lowmmem occurs. */
+inline int oplus_is_dma_buf_file(struct file *file)
+{
+       return is_dma_buf_file(file);
+}
+#endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
 static struct file *dma_buf_getfile(struct dma_buf *dmabuf, int flags)
 {
 	static const struct qstr this = QSTR_INIT("dmabuf", 6);
@@ -640,7 +640,6 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 	dmabuf->buf_name = bufname;
 	dmabuf->name = bufname;
 	dmabuf->ktime = ktime_get();
-	atomic_set(&dmabuf->dent_count, 1);
 
 	if (!resv) {
 		resv = (struct reservation_object *)&dmabuf[1];
@@ -1360,7 +1359,7 @@ int dma_buf_get_flags(struct dma_buf *dmabuf, unsigned long *flags)
 }
 EXPORT_SYMBOL(dma_buf_get_flags);
 
-#ifdef CONFIG_DEBUG_FS
+#if defined(CONFIG_DEBUG_FS) || (defined(OPLUS_FEATURE_PERFORMANCE) && defined(CONFIG_PROC_FS))
 static int dma_buf_debug_show(struct seq_file *s, void *unused)
 {
 	int ret;
@@ -1601,6 +1600,7 @@ static const struct file_operations dma_procs_debug_fops = {
 	.release        = single_release
 };
 
+#ifdef CONFIG_DEBUG_FS
 static struct dentry *dma_buf_debugfs_dir;
 
 static int dma_buf_init_debugfs(void)
@@ -1642,6 +1642,64 @@ static void dma_buf_uninit_debugfs(void)
 	if (dma_buf_debugfs_dir)
 		debugfs_remove_recursive(dma_buf_debugfs_dir);
 }
+#else /* CONFIG_DEBUG_FS */
+static inline int dma_buf_init_debugfs(void)
+{
+	return 0;
+}
+static inline void dma_buf_uninit_debugfs(void)
+{
+}
+#endif /* CONFIG_DEBUG_FS */
+
+#if defined(OPLUS_FEATURE_PERFORMANCE) && defined(CONFIG_PROC_FS)
+static struct proc_dir_entry *dma_buf_procfs_root;
+
+int dma_buf_init_procfs(void)
+{
+	struct proc_dir_entry *p;
+	int err = 0;
+
+	p = proc_mkdir("dma_buf", NULL);
+	if (IS_ERR(p))
+		return PTR_ERR(p);
+
+	dma_buf_procfs_root = p;
+
+	p = proc_create_data("bufinfo",
+			     S_IFREG | 0664,
+			     dma_buf_procfs_root,
+			     &dma_buf_debug_fops,
+			     NULL);
+	if (IS_ERR(p)) {
+		pr_debug("dma_buf: procfs: failed to create node bufinfo\n");
+		proc_remove(dma_buf_procfs_root);
+		dma_buf_procfs_root = NULL;
+		err = PTR_ERR(dma_buf_procfs_root);
+		return err;
+	}
+
+	p = proc_create_data("dmaprocs",
+			     S_IFREG | 0664,
+			     dma_buf_procfs_root,
+			     &dma_procs_debug_fops,
+			     NULL);
+	if (IS_ERR(p)) {
+		pr_debug("dma_buf: procfs: failed to create node dmaprocs\n");
+		proc_remove(dma_buf_procfs_root);
+		dma_buf_procfs_root = NULL;
+		err = PTR_ERR(dma_buf_procfs_root);
+	}
+
+	return err;
+}
+
+void dma_buf_uninit_procfs(void)
+{
+	proc_remove(dma_buf_procfs_root);
+}
+#endif /* defined(OPLUS_FEATURE_PERFORMANCE) && defined(CONFIG_PROC_FS) */
+
 #else
 static inline int dma_buf_init_debugfs(void)
 {
@@ -1661,6 +1719,9 @@ static int __init dma_buf_init(void)
 	mutex_init(&db_list.lock);
 	INIT_LIST_HEAD(&db_list.head);
 	dma_buf_init_debugfs();
+#if defined(OPLUS_FEATURE_PERFORMANCE) && defined(CONFIG_PROC_FS)
+	dma_buf_init_procfs();
+#endif
 	return 0;
 }
 subsys_initcall(dma_buf_init);
@@ -1669,5 +1730,8 @@ static void __exit dma_buf_deinit(void)
 {
 	dma_buf_uninit_debugfs();
 	kern_unmount(dma_buf_mnt);
+#if defined(OPLUS_FEATURE_PERFORMANCE) && defined(CONFIG_PROC_FS)
+	dma_buf_uninit_procfs();
+#endif
 }
 __exitcall(dma_buf_deinit);
